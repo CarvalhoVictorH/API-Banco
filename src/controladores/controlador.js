@@ -1,4 +1,11 @@
-const { banco, contas } = require("../bancodedados");
+const {
+  banco,
+  contas,
+  depositos,
+  saques,
+  transferencias,
+} = require("../bancodedados");
+const { format } = require("date-fns");
 
 const listarTodas = (req, res) => {
   return res.send(contas);
@@ -74,4 +81,112 @@ const deletarConta = (req, res) => {
   return res.json({ mensagem: "Conta deletada com sucesso" });
 };
 
-module.exports = { listarTodas, criarContas, atualizarConta, deletarConta };
+const depositarConta = (req, res) => {
+  const { numeroConta, valor } = req.body;
+
+  const acharConta = contas.find((conta) => conta.numero === numeroConta);
+
+  if (!acharConta) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  acharConta.saldo += valor;
+
+  const deposito = {
+    data: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+    numeroConta,
+    valor,
+  };
+
+  depositos.push(deposito);
+
+  return res.status(201).json({ mensagem: "Depósito realizado com sucesso!" });
+};
+
+const sacarConta = (req, res) => {
+  const { numeroConta, valor } = req.body;
+  const acharConta = contas.find((conta) => conta.numero === numeroConta);
+
+  acharConta.saldo -= valor;
+
+  const saque = {
+    data: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+    numeroConta,
+    valor,
+  };
+
+  saques.push(saque);
+  return res.status(201).json({ mensagem: "Saque realizado com sucesso!" });
+};
+
+const transferenciasContas = (req, res) => {
+  const { numeroContaOrigem, numeroContaDestino, valor } = req.body;
+
+  const acharContaOrigem = contas.find(
+    (conta) => conta.numero === numeroContaOrigem
+  );
+
+  const acharContaDestino = contas.find(
+    (conta) => conta.numero === numeroContaDestino
+  );
+
+  acharContaOrigem.saldo -= valor;
+
+  acharContaDestino.saldo += valor;
+
+  const transferencia = {
+    data: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+    numeroContaOrigem,
+    numeroContaDestino,
+    valor,
+  };
+
+  transferencias.push(transferencia);
+
+  res.status(201).json({ mensagem: "Trasferência realizada com sucesso!" });
+};
+
+const listarSaldo = (req, res) => {
+  const { numero_conta } = req.query;
+  const acharConta = contas.find((conta) => conta.numero === numero_conta);
+
+  return res.status(200).json({ saldo: acharConta.saldo });
+};
+
+const listarExtrato = (req, res) => {
+  const { contaEncontrada } = req;
+
+  const extrato = {
+    depositos: depositos.filter(
+      (deposito) => deposito.numeroConta === contaEncontrada.numero
+    ),
+    saques: saques.filter(
+      (saques) => saques.numeroConta === contaEncontrada.numero
+    ),
+    transferenciasEnviadas: transferencias.filter(
+      (transferencia) =>
+        transferencia.numeroContaOrigem === contaEncontrada.numero
+    ),
+    transferenciasRecebidas: transferencias.filter(
+      (transferencia) =>
+        transferencia.numeroContaDestino === contaEncontrada.numero
+    ),
+  };
+
+  res.status(200).json(extrato);
+};
+
+module.exports = {
+  listarTodas,
+  criarContas,
+  atualizarConta,
+  deletarConta,
+  depositarConta,
+  sacarConta,
+  transferenciasContas,
+  listarSaldo,
+  listarExtrato,
+};

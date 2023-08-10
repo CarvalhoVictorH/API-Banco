@@ -57,9 +57,179 @@ const validarCamposAtualizacao = (req, res, next) => {
   next();
 };
 
+const validarDeposito = (req, res, next) => {
+  const { numeroConta, valor } = req.body;
+
+  if (!numeroConta) {
+    return res
+      .status(400)
+      .json({ mensagem: "Por favor, informe um número de conta válido." });
+  } else if (valor === undefined || valor <= 0) {
+    return res
+      .status(400)
+      .json({ mensagem: "Por favor, informe o valor a ser depositado." });
+  }
+
+  next();
+};
+
+const validarContaBody = (req, res, next) => {
+  const { numeroConta } = req.body;
+  const acharConta = contas.find((conta) => conta.numero === numeroConta);
+
+  if (!acharConta) {
+    return res.status(404).json({ mensagem: "Conta não encontrada." });
+  }
+
+  next();
+};
+
+const validarSenhaContas = (req, res, next) => {
+  const { numeroConta, senha } = req.body;
+
+  const acharConta = contas.find((conta) => conta.numero === numeroConta);
+  if (!acharConta) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  if (acharConta.usuario.senha !== senha) {
+    return res
+      .status(401)
+      .json({ mensagem: "por favor, informe a senha correta." });
+  }
+
+  next();
+};
+
+const validarValorSaque = (req, res, next) => {
+  const { numeroConta, valor } = req.body;
+  const acharConta = contas.find((conta) => conta.numero === numeroConta);
+
+  if (!acharConta) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  if (valor <= 0) {
+    return res
+      .status(400)
+      .json({ mensagem: "Por favor, informe um valor válido" });
+  } else if (valor > acharConta.saldo) {
+    return res.status(400).json({
+      mensagem:
+        "Não foi possível realizar o saque, valor de saque maior que o saldo disponível.",
+    });
+  }
+
+  next();
+};
+
+const validarTransferencia = (req, res, next) => {
+  const { numeroContaOrigem, numeroContaDestino, valor, senha } = req.body;
+
+  if ((!numeroContaOrigem || !numeroContaDestino, !valor, !senha)) {
+    return res.status(400).json({
+      mensagem: "não foi possível realizar a operação, revise os dados!",
+    });
+  }
+
+  const acharContaOrigem = contas.find(
+    (conta) => conta.numero === numeroContaOrigem
+  );
+  if (!acharContaOrigem) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  const acharContaDestino = contas.find(
+    (conta) => conta.numero === numeroContaDestino
+  );
+  if (!acharContaDestino) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  if (acharContaOrigem === acharContaDestino) {
+    return res.status(400).json({
+      mensagem: "Você não pode fazer trasnferências para contas iguais.",
+    });
+  }
+
+  if (acharContaOrigem.usuario.senha !== senha) {
+    return res.status(401).json({
+      mensagem: "Senha incorreta, por favor informe uma senha válida.",
+    });
+  }
+
+  if (acharContaOrigem.saldo < valor) {
+    return res.status(400).json({
+      mensagem: "valor do saldo insuficiente para realizar a transferência.",
+    });
+  }
+
+  next();
+};
+
+const validarConta = (req, res, next) => {
+  const { numero_conta } = req.query;
+  const acharConta = contas.find((conta) => conta.numero === numero_conta);
+
+  if (!acharConta) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  next();
+};
+
+const validarExtrato = (req, res, next) => {
+  const { numero_conta, senha } = req.query;
+
+  if (!numero_conta || !senha) {
+    return res.status(400).json({
+      mensagem: "Por favor, informe o número da conta e a senha.",
+    });
+  }
+
+  const acharConta = contas.find((conta) => conta.numero === numero_conta);
+  if (!acharConta) {
+    return res.status(404).json({
+      mensagem:
+        "Não foi possível encontrar essa conta, por favor informe uma conta válida.",
+    });
+  }
+
+  if (acharConta.usuario.senha !== senha) {
+    return res.status(401).json({
+      mensagem: "Senha incorreta, por favor informe a senha correta.",
+    });
+  }
+
+  req.contaEncontrada = acharConta;
+  next();
+};
+
 module.exports = {
   validarSenha,
   validarDadoUnico,
   validarCampos,
   validarCamposAtualizacao,
+  validarDeposito,
+  validarContaBody,
+  validarValorSaque,
+  validarSenhaContas,
+  validarTransferencia,
+  validarConta,
+  validarExtrato,
 };
